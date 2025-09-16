@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "817294318931",
+    "project_id": "bookcollector-c1395",
+    "storage_bucket": "bookcollector-c1395.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:817294318931:android:d252ab44788621041c15a6",
+        "android_client_info": {
+          "package_name": "com.your.bookcollector"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "817294318931-2e699r1a7rr1v96dp8q84fnblbbp18vs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3C84GG-e3ac9wfnB7WKuGXsZTXYu1L-o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "817294318931-2e699r1a7rr1v96dp8q84fnblbbp18vs.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
