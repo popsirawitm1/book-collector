@@ -1,3 +1,46 @@
+
+// configs/firebase.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApps, initializeApp } from "firebase/app";
+import { getAuth, getReactNativePersistence, initializeAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
+import { Platform } from "react-native";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDxE3MrpkkMaVqn1nhQ5M5KDBGFHWSX6_0",
+  authDomain: "test-38156.firebaseapp.com",
+  projectId: "test-38156",
+  storageBucket: "test-38156.appspot.com", 
+  messagingSenderId: "297150721230",
+  appId: "1:297150721230:web:9b44820ed37561cf9a749f",
+  measurementId: "G-D0JSSJX27G"
+};
+
+const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
+
+import type { Auth } from "firebase/auth";
+let auth: Auth;
+if (Platform.OS === "web") {
+    auth = getAuth(app);           // เว็บใช้ getAuth ปกติ
+} else {
+    try {
+        auth = initializeAuth(app, { // Native ต้อง initializeAuth + persistence
+            persistence: getReactNativePersistence(AsyncStorage),
+        });
+    } catch {
+        auth = getAuth(app);         // กัน fast refresh เรียกซ้ำ
+    }
+}
+
+
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+export { app, auth, db, storage };
+
+
+/*
 import {Platform} from "react-native";
 import {initializeApp, getApps} from "firebase/app";
 import {getAuth, initializeAuth, getReactNativePersistence} from "firebase/auth";
@@ -29,3 +72,5 @@ if (Platform.OS === "web") {
 }
 
 export {app, auth};
+*/
+
