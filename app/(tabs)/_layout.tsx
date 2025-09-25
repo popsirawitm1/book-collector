@@ -11,6 +11,7 @@ export default function TabsLayout() {
                 tabBarInactiveTintColor: "#999",
                 tabBarLabelStyle: {fontSize: 12},
                 tabBarStyle: {backgroundColor: "#fff"},
+                screenOptions: { headerShown: false },
             }}
         >
             <Tabs.Screen
@@ -52,7 +53,7 @@ export default function TabsLayout() {
             <Tabs.Screen
                 name="recs"
                 options={{
-                    title: "Recs",
+                    title: "Recommendations",
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="sparkles-outline" size={size} color={color}/>
                     ),
