@@ -4,7 +4,7 @@ import { useFocusEffect } from "expo-router";
 import type { Auth } from "firebase/auth";
 import { addDoc, collection } from "firebase/firestore";
 import { useCallback, useState } from "react";
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { auth, db } from "../../configs/firebase";
 import { BookData, fetchBookByISBN, ScanModal, ScanResult } from "../lib/scan";
 
@@ -29,27 +29,36 @@ const defaultBook = {
 export default function Add() {
   const [book, setBook] = useState({ ...defaultBook });
   const [scanVisible, setScanVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(""); // สำหรับข้อความสีแดง
 
   useFocusEffect(
     useCallback(() => {
       setBook({ ...defaultBook });
+      setErrorMessage("");
     }, [])
   );
 
-  const nextStep = () => setBook(prev => ({ ...prev, step: prev.step + 1 }));
-  const prevStep = () => setBook(prev => ({ ...prev, step: prev.step - 1 }));
+  const nextStep = () => {
+    setErrorMessage(""); // ล้าง error ทุกครั้ง
+    setBook(prev => ({ ...prev, step: prev.step + 1 }));
+  };
+  const prevStep = () => {
+    setErrorMessage("");
+    setBook(prev => ({ ...prev, step: prev.step - 1 }));
+  };
 
   // ================= FETCH FROM ISBN or TITLE =================
   const fetchBook = async (query?: string) => {
     const search = query || book.isbn || book.title;
     if (!search) return;
 
-    const bookData: BookData | null = await fetchBookByISBN(search); // ฟังก์ชันนี้ต้องรองรับ title ด้วย
+    const bookData: BookData | null = await fetchBookByISBN(search);
     if (bookData) {
       setBook(prev => ({ ...prev, ...bookData }));
+      setErrorMessage("");
       setTimeout(nextStep, 100);
     } else {
-      Alert.alert("ไม่พบหนังสือ", "ไม่พบข้อมูลจาก ISBN/Title นี้");
+      setErrorMessage("ไม่พบข้อมูลจาก ISBN/Title นี้");
     }
   };
 
@@ -57,7 +66,7 @@ export default function Add() {
   const pickCoverImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      return Alert.alert("Permission Denied", "Please allow access to your photo library.");
+      return setErrorMessage("Permission Denied: Please allow access to your photo library.");
     }
 
     try {
@@ -73,16 +82,22 @@ export default function Add() {
       }
     } catch (error) {
       console.error("ImagePicker error:", error);
-      Alert.alert("Error picking image", (error as Error).message);
+      setErrorMessage((error as Error).message);
     }
   };
 
   // ================= SAVE BOOK =================
   const saveBook = async () => {
-    if (!book.title || !book.authors) {
-      return Alert.alert("กรุณากรอก Title และ Authors ก่อนบันทึก");
+    if (!book.title) {
+      setErrorMessage("กรุณากรอก Title ก่อนบันทึก");
+      setBook(prev => ({ ...prev, step: 2 })); // กลับไป Step 2
+      return;
     }
-    if (!typedAuth.currentUser) return Alert.alert("Error", "User not logged in");
+    if (!typedAuth.currentUser) {
+      setErrorMessage("User not logged in");
+      setBook(prev => ({ ...prev, step: 2 }));
+      return;
+    }
 
     try {
       await addDoc(collection(db, "books"), {
@@ -101,11 +116,12 @@ export default function Add() {
         createdAt: new Date(),
       });
 
-      Alert.alert("Saved", "Book data has been saved to Firestore!");
+      setErrorMessage(""); // ล้างข้อความ error
       setBook({ ...defaultBook, step: 1 });
     } catch (error: any) {
       console.error("Upload error:", error);
-      Alert.alert("Upload error", error.message || "Failed to save book.");
+      setErrorMessage(error.message || "Failed to save book.");
+      setBook(prev => ({ ...prev, step: 2 }));
     }
   };
 
@@ -176,6 +192,13 @@ export default function Add() {
                 onChangeText={v => setBook(prev => ({ ...prev, title: v }))}
               />
             </View>
+
+            {errorMessage ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
+
             <Text style={styles.orText}>_____________________________________________</Text>
 
             <TouchableOpacity style={styles.primaryButton} onPress={() => fetchBook()}>
@@ -206,55 +229,53 @@ export default function Add() {
               )}
             </TouchableOpacity>
 
-            {/* Inputs */}
-            {renderInput("Title *", book.title, v => setBook(prev => ({ ...prev, title: v })), "text", "text-outline")}
-            {renderInput("Authors *", book.authors, v => setBook(prev => ({ ...prev, authors: v })), "text", "people-outline")}
+            {/* Title input with error */}
+            <View style={{ marginBottom: 12 }}>
+              <Text style={styles.label}>Title *</Text>
+              <View style={[
+                styles.inputContainer,
+                !book.title && errorMessage && styles.inputError
+              ]}>
+                <Ionicons name="text-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={book.title}
+                  onChangeText={v => {
+                    setBook(prev => ({ ...prev, title: v }));
+                    if (v) setErrorMessage(""); // พิมพ์แล้วลบ error
+                  }}
+                />
+              </View>
+              {!book.title && errorMessage ? (
+                <Text style={styles.errorText}>กรุณากรอก Title</Text>
+              ) : null}
+            </View>
+
+            {/* Inputs อื่น ๆ */}
+            {renderInput("Authors", book.authors, v => setBook(prev => ({ ...prev, authors: v })), "text", "people-outline")}
             {renderInput("Publisher", book.publisher, v => setBook(prev => ({ ...prev, publisher: v })), "text", "business-outline")}
             {renderInput("Year", book.year, v => setBook(prev => ({ ...prev, year: v })), "numeric", "calendar-outline")}
-
-            {/* Language */}
-            <Text style={styles.label}>Language</Text>
-            <View style={styles.buttonGroup}>
-              {["English", "Thai"].map(lang => (
-                <TouchableOpacity
-                  key={lang}
-                  style={[styles.optionButton, book.language === lang && styles.optionButtonSelected]}
-                  onPress={() => setBook(prev => ({ ...prev, language: lang }))}
-                >
-                  <Text style={[styles.optionButtonText, book.language === lang && styles.optionButtonTextSelected]}>{lang}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Binding */}
-            <Text style={styles.label}>Binding</Text>
-            <View style={styles.buttonGroup}>
-              {["Hardcover", "Paperback"].map(bind => (
-                <TouchableOpacity
-                  key={bind}
-                  style={[styles.optionButton, book.binding === bind && styles.optionButtonSelected]}
-                  onPress={() => setBook(prev => ({ ...prev, binding: bind }))}
-                >
-                  <Text style={[styles.optionButtonText, book.binding === bind && styles.optionButtonTextSelected]}>{bind}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
             {renderInput("ISBN", book.isbn, v => setBook(prev => ({ ...prev, isbn: v })), "numeric", "barcode-outline")}
             {renderInput("Source", book.acquisitionSource, v => setBook(prev => ({ ...prev, acquisitionSource: v })), "text", "cart-outline")}
             {renderInput("Acquisition Date", book.acquisitionDate, v => setBook(prev => ({ ...prev, acquisitionDate: v })), "text", "calendar-outline")}
             {renderInput("Purchase Price", book.purchasePrice, v => setBook(prev => ({ ...prev, purchasePrice: v })), "numeric", "cash-outline")}
-
-
-
-
 
             {/* Actions */}
             <View style={styles.row}>
               <TouchableOpacity style={styles.secondaryButton} onPress={prevStep}>
                 <Text style={styles.secondaryButtonText}>Back</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.primaryButton} onPress={nextStep}>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => {
+                  if (!book.title) {
+                    setErrorMessage("กรุณากรอก Title");
+                    return;
+                  }
+                  setErrorMessage("");
+                  nextStep();
+                }}
+              >
                 <Text style={styles.buttonText}>Next</Text>
               </TouchableOpacity>
             </View>
@@ -330,7 +351,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     minWidth: 100,
     borderRadius: 10,
-    marginTop: 12,
+    marginTop: 8,
     alignItems: "center",
     shadowColor: "#000",
     shadowOpacity: 0.1,
@@ -380,4 +401,19 @@ const styles = StyleSheet.create({
   optionButtonSelected: { backgroundColor: "#4F46E5" },
   optionButtonText: { color: "#374151", fontWeight: "500" },
   optionButtonTextSelected: { color: "#fff", fontWeight: "600" },
+  errorBox: {
+    backgroundColor: "#FEE2E2",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 8,
+  },
+  errorText: {
+    color: "#B91C1C",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  inputError: {
+    borderColor: "#B91C1C",
+  }
 });

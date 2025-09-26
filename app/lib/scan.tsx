@@ -109,7 +109,7 @@ export function ScanModal({
             <Text style={styles.buttonText}>สลับกล้อง</Text>
           </TouchableOpacity>
           <TouchableOpacity style={{ ...styles.button, marginTop: 10 }} onPress={onClose}>
-            <Text style={styles.buttonText}>ยกเลิก</Text>
+            <Text style={styles.buttonText}>   ยกเลิก</Text>
           </TouchableOpacity>
         </View>
       </View>

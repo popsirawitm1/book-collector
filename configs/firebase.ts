@@ -1,4 +1,3 @@
-
 // configs/firebase.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApps, initializeApp } from "firebase/app";
@@ -8,13 +7,13 @@ import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDxE3MrpkkMaVqn1nhQ5M5KDBGFHWSX6_0",
-  authDomain: "test-38156.firebaseapp.com",
-  projectId: "test-38156",
-  storageBucket: "test-38156.appspot.com", 
-  messagingSenderId: "297150721230",
-  appId: "1:297150721230:web:9b44820ed37561cf9a749f",
-  measurementId: "G-D0JSSJX27G"
+  apiKey: "AIzaSyBgqr44GBMaxbLAjWlmAZA10RfRv-yjCUM",
+  authDomain: "bookcollector-c1395.firebaseapp.com",
+  projectId: "bookcollector-c1395",
+  storageBucket: "bookcollector-c1395.firebasestorage.app",
+  messagingSenderId: "817294318931",
+  appId: "1:817294318931:web:e45214c8f039f0101c15a6",
+  measurementId: "G-ESHJ6K0JP1"
 };
 
 const app = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
