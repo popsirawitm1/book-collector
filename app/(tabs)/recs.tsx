@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
     View,
     Text,
@@ -8,11 +8,13 @@ import {
     ScrollView,
     ActivityIndicator,
     Switch,
-    FlatList,
-    Linking
+    FlatList
 } from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
-import {openRouterAIService} from '@/services/aiRecommendationService';
+import {openRouterAIService} from '../../services/aiRecommendationService';
+import {auth, db} from '../../configs/firebase';
+import {collection, query, where, getDocs} from 'firebase/firestore';
+import {useAuth} from '../../contexts/AuthContext';
 
 interface Recommendation {
     isbn13: string;
@@ -46,13 +48,41 @@ interface RecommendationsScreenProps {
     onGenerateRecs: (mode: 'collection' | 'taste', filters?: any) => void;
 }
 
+// เพิ่ม interface สำหรับหนังสือ
+interface Book {
+    id: string;
+    title: string;
+    authors: string;
+    publisher?: string;
+    year?: string;
+    binding?: string;
+    language?: string;
+    edition?: string;
+    purchasePrice?: number;
+}
+
+// เพิ่ม interface สำหรับสถิติคอลเลคชัน
+interface CollectionAnalysis {
+    totalBooks: number;
+    topAuthors: string[];
+    topPublishers: string[];
+    commonYearRanges: string[];
+    preferredBindings: string[];
+    commonLanguages: string[];
+    avgPrice: number;
+    hasFirstEditions: boolean;
+}
+
 export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onGenerateRecs}) => {
+    const {user} = useAuth();
     const [activeMode, setActiveMode] = useState<'collection' | 'taste'>('collection');
     const [tasteInput, setTasteInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     const [searchSources, setSearchSources] = useState<SearchSource[]>([]);
     const [error, setError] = useState('');
+    const [collectionAnalysis, setCollectionAnalysis] = useState<CollectionAnalysis | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [filters, setFilters] = useState({
         years: '',
         binding: '',
@@ -61,24 +91,163 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
         firstEdition: false
     });
 
-    const handleOpenLink = async (url: string) => {
+    // ฟังก์ชันดึงและวิเคราะห์คอลเลคชัน
+    const fetchAndAnalyzeCollection = async (): Promise<CollectionAnalysis | null> => {
+        if (!user?.uid) return null;
+
+        setIsAnalyzing(true);
         try {
-            const supported = await Linking.canOpenURL(url);
-            if (supported) {
-                await Linking.openURL(url);
-            } else {
-                console.log("Don't know how to open URI: " + url);
+            const q = query(collection(db, "books"), where("userId", "==", user.uid));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                throw new Error('No books found in your collection');
             }
+
+            const books: Book[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                books.push({
+                    id: doc.id,
+                    title: data.title || 'Unknown',
+                    authors: data.authors || 'Unknown',
+                    publisher: data.publisher,
+                    year: data.year,
+                    binding: data.binding,
+                    language: data.language,
+                    edition: data.edition,
+                    purchasePrice: data.purchasePrice || data.price || 0
+                });
+            });
+
+            // วิเคราะห์ข้อมูล
+            const analysis = analyzeCollection(books);
+            setCollectionAnalysis(analysis);
+            return analysis;
+
         } catch (error) {
-            console.error('Error opening URL:', error);
+            console.error('Error fetching collection:', error);
+            throw error;
+        } finally {
+            setIsAnalyzing(false);
         }
     };
 
+    // ฟังก์ชันวิเคราะห์คอลเลคชัน
+    const analyzeCollection = (books: Book[]): CollectionAnalysis => {
+        const authorCount: Record<string, number> = {};
+        const publisherCount: Record<string, number> = {};
+        const yearRanges: string[] = [];
+        const bindings: string[] = [];
+        const languages: string[] = [];
+        let totalPrice = 0;
+        let priceCount = 0;
+        let hasFirstEditions = false;
+
+        books.forEach(book => {
+            // นับ authors
+            if (book.authors && book.authors !== 'Unknown') {
+                const authors = book.authors.split(',').map(a => a.trim());
+                authors.forEach(author => {
+                    authorCount[author] = (authorCount[author] || 0) + 1;
+                });
+            }
+
+            // นับ publishers
+            if (book.publisher) {
+                publisherCount[book.publisher] = (publisherCount[book.publisher] || 0) + 1;
+            }
+
+            // เก็บปี
+            if (book.year) {
+                const year = parseInt(book.year);
+                if (!isNaN(year)) {
+                    // แบ่งเป็นช่วงทศวรรษ
+                    const decade = Math.floor(year / 10) * 10;
+                    const range = `${decade}s`;
+                    if (!yearRanges.includes(range)) {
+                        yearRanges.push(range);
+                    }
+                }
+            }
+
+            // เก็บ binding
+            if (book.binding) {
+                if (!bindings.includes(book.binding)) {
+                    bindings.push(book.binding);
+                }
+            }
+
+            // เก็บภาษา
+            if (book.language) {
+                if (!languages.includes(book.language)) {
+                    languages.push(book.language);
+                }
+            }
+
+            // คำนวณราคา
+            if (book.purchasePrice && book.purchasePrice > 0) {
+                totalPrice += book.purchasePrice;
+                priceCount++;
+            }
+
+            // ตรวจสอบ first edition
+            if (book.edition && book.edition.toLowerCase().includes('first')) {
+                hasFirstEditions = true;
+            }
+        });
+
+        // เรียงลำดับและเอาอันดับต้นๆ
+        const topAuthors = Object.entries(authorCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([author]) => author);
+
+        const topPublishers = Object.entries(publisherCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([publisher]) => publisher);
+
+        return {
+            totalBooks: books.length,
+            topAuthors,
+            topPublishers,
+            commonYearRanges: yearRanges.slice(0, 3),
+            preferredBindings: bindings.slice(0, 2),
+            commonLanguages: languages.slice(0, 2),
+            avgPrice: priceCount > 0 ? totalPrice / priceCount : 0,
+            hasFirstEditions
+        };
+    };
+
+    // อัปเดต mockAPI ให้ใช้ข้อมูลจริง
     const mockAPI = {
         getRecommendations: async (mode: string, target: any): Promise<RecommendationResponse> => {
             try {
+                let analysisData = target;
+
+                // ถ้าเป็น collection mode ให้ใช้ข้อมูลจากคอลเลคชัน
+                if (mode === 'AUTO') {
+                    const analysis = collectionAnalysis || await fetchAndAnalyzeCollection();
+                    if (!analysis) {
+                        throw new Error('Unable to analyze your collection');
+                    }
+
+                    // สร้าง context จากคอลเลคชัน
+                    analysisData = {
+                        collectionSize: analysis.totalBooks,
+                        favoriteAuthors: analysis.topAuthors,
+                        preferredPublishers: analysis.topPublishers,
+                        commonYears: analysis.commonYearRanges,
+                        preferredBinding: analysis.preferredBindings,
+                        languages: analysis.commonLanguages,
+                        hasFirstEditions: analysis.hasFirstEditions,
+                        ...target // รวม filters ที่ผู้ใช้เลือก
+                    };
+                }
+
                 // เรียก OpenRouter AI พร้อม Web Search
-                const result = await openRouterAIService.getRecommendations(mode, target);
+                const result = await openRouterAIService.getRecommendations(mode, analysisData);
 
                 // เก็บ search sources แยก
                 if (result.search_sources) {
@@ -95,11 +264,11 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
                     recommendations: [
                         {
                             isbn13: '9780123456789',
-                            title: 'Web Search Unavailable - Sample Book',
+                            title: 'Based on Your Collection - Sample Book',
                             author: 'Sample Author',
                             publisher: 'Sample Publisher',
                             year: '2023',
-                            description: 'Web search AI service is currently unavailable. This is sample data.',
+                            description: 'This recommendation is based on your collection analysis. Web search AI service is currently unavailable.',
                             estimated_value: 'Unknown',
                             availability: 'Unknown'
                         }
@@ -109,6 +278,16 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
             }
         }
     };
+
+    // โหลดข้อมูลคอลเลคชันเมื่อเข้าหน้า collection mode
+    useEffect(() => {
+        if (activeMode === 'collection' && user?.uid && !collectionAnalysis) {
+            fetchAndAnalyzeCollection().catch(err => {
+                console.error('Failed to analyze collection:', err);
+                setError(err.message || 'Failed to analyze your collection');
+            });
+        }
+    }, [activeMode, user?.uid]);
 
     const handleGenerate = async () => {
         setIsLoading(true);
@@ -205,7 +384,9 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             {/* Header Card */}
             <View style={styles.card}>
-
+                <Text style={styles.cardTitle}>
+                    <Ionicons name="sparkles" size={20} color="#6366f1"/> AI Book Recommendations
+                </Text>
                 <Text style={styles.paragraph}>
                     Get personalized book recommendations based on your collection or specify your taste preferences.
                     All recommendations are verified with web search.
@@ -237,6 +418,62 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
                         <Text style={styles.infoText}>
                             We analyze authors, publishers, and time periods in your books to suggest new titles.
                         </Text>
+
+                        {/* แสดงสถานะการวิเคราะห์ */}
+                        {isAnalyzing && (
+                            <View style={styles.analysisStatus}>
+                                <ActivityIndicator size="small" color="#6366f1" style={{marginRight: 8}}/>
+                                <Text style={styles.analysisText}>Analyzing your collection...</Text>
+                            </View>
+                        )}
+
+                        {/* แสดงผลการวิเคราะห์ */}
+                        {collectionAnalysis && !isAnalyzing && (
+                            <View style={styles.analysisResult}>
+                                <View style={styles.analysisRow}>
+                                    <Ionicons name="library-outline" size={14} color="#6366f1"/>
+                                    <Text style={styles.analysisDetailText}>
+                                        {collectionAnalysis.totalBooks} books analyzed
+                                    </Text>
+                                </View>
+
+                                {collectionAnalysis.topAuthors.length > 0 && (
+                                    <View style={styles.analysisRow}>
+                                        <Ionicons name="person-outline" size={14} color="#6366f1"/>
+                                        <Text style={styles.analysisDetailText}>
+                                            Top authors: {collectionAnalysis.topAuthors.slice(0, 3).join(', ')}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {collectionAnalysis.topPublishers.length > 0 && (
+                                    <View style={styles.analysisRow}>
+                                        <Ionicons name="business-outline" size={14} color="#6366f1"/>
+                                        <Text style={styles.analysisDetailText}>
+                                            Publishers: {collectionAnalysis.topPublishers.join(', ')}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {collectionAnalysis.commonYearRanges.length > 0 && (
+                                    <View style={styles.analysisRow}>
+                                        <Ionicons name="calendar-outline" size={14} color="#6366f1"/>
+                                        <Text style={styles.analysisDetailText}>
+                                            Common periods: {collectionAnalysis.commonYearRanges.join(', ')}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {collectionAnalysis.hasFirstEditions && (
+                                    <View style={styles.analysisRow}>
+                                        <Ionicons name="star-outline" size={14} color="#eab308"/>
+                                        <Text style={styles.analysisDetailText}>
+                                            Includes first editions
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
                     </View>
                 )}
 
@@ -309,7 +546,7 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
                             </>
                         ) : (
                             <>
-                                <Ionicons name="sparkles" size={16} color="#fff" style={{marginRight: 2}}/>
+                                <Ionicons name="sparkles" size={16} color="#fff" style={{marginRight: 0}}/>
                                 <Text style={styles.primaryBtnText}>Get Recommendations</Text>
                             </>
                         )}
@@ -328,7 +565,7 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
             {recommendations.length > 0 && (
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Recommendations for You</Text>
+                        <Text style={styles.sectionTitle}>Recommendations for You </Text>
                         <View style={styles.badgeRow}>
                             <View style={styles.badge}>
                                 <Ionicons name="sparkles" size={12} color="#6366f1"/>
@@ -343,7 +580,7 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
 
                     <FlatList
                         data={recommendations}
-                        keyExtractor={(item, index) => `${item.isbn13}-${index}`}
+                        keyExtractor={(item) => item.isbn13}
                         renderItem={renderRecommendation}
                         scrollEnabled={false}
                         contentContainerStyle={{gap: 12}}
@@ -368,16 +605,9 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({onG
                         <Ionicons name="globe" size={16} color="#6366f1"/> Web Search Sources
                     </Text>
                     {searchSources.slice(0, 5).map((source, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            style={styles.sourceItem}
-                            onPress={() => handleOpenLink(source.url)}
-                        >
-                            <View style={styles.sourceContent}>
-                                <Text style={styles.sourceTitle}>{source.title}</Text>
-                                <Text style={styles.sourceUrl}>{source.url}</Text>
-                            </View>
-                            <Ionicons name="open-outline" size={12} color="#6b7280"/>
+                        <TouchableOpacity key={index} style={styles.sourceItem}>
+                            <Text style={styles.sourceTitle}>{source.title}</Text>
+                            <Text style={styles.sourceUrl}>{source.url}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -444,17 +674,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderRadius: 10,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#4f46e5',
-        shadowColor: '#6366f1',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2
+        alignItems: 'center'
     },
     btnDisabled: {opacity: 0.5},
     primaryBtnText: {color: '#ffffff', fontSize: 13, fontWeight: '600'},
@@ -557,16 +777,9 @@ const styles = StyleSheet.create({
         marginBottom: 8
     },
     sourceItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 4,
+        paddingVertical: 6,
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
-        gap: 8
-    },
-    sourceContent: {
-        flex: 1
+        borderBottomColor: '#e5e7eb'
     },
     sourceTitle: {
         fontSize: 12,
@@ -581,6 +794,31 @@ const styles = StyleSheet.create({
     emptyState: {alignItems: 'center', paddingVertical: 48, gap: 12},
     emptyTitle: {fontSize: 16, fontWeight: '600', color: '#111827'},
     emptyDesc: {fontSize: 13, color: '#6b7280', textAlign: 'center', paddingHorizontal: 24},
+    analysisStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        paddingVertical: 8
+    },
+    analysisText: {
+        fontSize: 12,
+        color: '#6366f1',
+        fontStyle: 'italic'
+    },
+    analysisResult: {
+        marginTop: 8,
+        gap: 6
+    },
+    analysisRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6
+    },
+    analysisDetailText: {
+        fontSize: 11,
+        color: '#374151',
+        flex: 1
+    }
 });
 
 export default function RecommendationsTab() {
