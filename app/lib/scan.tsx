@@ -1,7 +1,9 @@
+// APP/lib/scan.tsx
 import { Camera, CameraView } from "expo-camera";
 import { useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+const API_KEY = "AIzaSyAttXNRb0ao2E6UuLJ1D8v-qOKmw3_YCVU";
 export interface BookData {
   isbn: string;
   title: string;
@@ -15,15 +17,35 @@ export interface ScanResult {
   isbn: string;
 }
 
-// ฟังก์ชันดึงข้อมูลหนังสือจาก Google Books API
-export async function fetchBookByISBN(isbn: string): Promise<BookData | null> {
-  if (!isbn) return null;
+// ฟังก์ชันดึงข้อมูลหนังสือ (รองรับ ISBN หรือ Title)
+export async function fetchBookByQuery(query: string): Promise<BookData | null> {
+  if (!query || query.trim() === "") return null;
+
+  const isISBN = /^\d{13}$/.test(query.trim());
+  let apiUrl = "";
+
+  if (isISBN) {
+    apiUrl = `https://www.googleapis.com/books/v1/volumes?q=isbn:${query.trim()}&key=${API_KEY}`;
+  } else {
+    apiUrl = `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(query.trim())}&key=${API_KEY}`;
+  }
+
   try {
-    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+    const response = await fetch(apiUrl);
     const data = await response.json();
 
     if (data.totalItems > 0 && data.items?.length) {
       const info = data.items[0].volumeInfo;
+
+      // สำหรับ Title ตรวจสอบให้ตรงกับ input (case-insensitive)
+      if (!isISBN && info.title?.toLowerCase() !== query.trim().toLowerCase()) {
+        return null;
+      }
+
+      const isbn = info.industryIdentifiers?.find(
+        (id: any) => id.type === "ISBN_13" 
+      )?.identifier || (isISBN ? query.trim() : "");
+
       return {
         isbn,
         title: info.title || "",
@@ -33,9 +55,10 @@ export async function fetchBookByISBN(isbn: string): Promise<BookData | null> {
         language: info.language === "th" ? "Thai" : "English",
       };
     }
-    return null;
+
+    return null; // ไม่เจอข้อมูล
   } catch (err) {
-    console.error("Error fetching book by ISBN:", err);
+    console.error("Error fetching book:", err);
     return null;
   }
 }

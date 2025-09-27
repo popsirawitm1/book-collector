@@ -1,3 +1,4 @@
+
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
@@ -6,7 +7,7 @@ import { addDoc, collection } from "firebase/firestore";
 import { useCallback, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { auth, db } from "../../configs/firebase";
-import { BookData, fetchBookByISBN, ScanModal, ScanResult } from "../lib/scan";
+import { BookData, fetchBookByQuery, ScanModal, ScanResult } from "../lib/scan";
 
 // Ensure 'auth' is typed correctly
 const typedAuth = auth as Auth;
@@ -52,7 +53,7 @@ export default function Add() {
     const search = query || book.isbn || book.title;
     if (!search) return;
 
-    const bookData: BookData | null = await fetchBookByISBN(search);
+    const bookData: BookData | null = await fetchBookByQuery(search);
     if (bookData) {
       setBook(prev => ({ ...prev, ...bookData }));
       setErrorMessage("");
