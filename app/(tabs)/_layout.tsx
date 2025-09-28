@@ -22,12 +22,7 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="home-outline" size={size} color={color}/>
                     ),
-                    headerTitle: () => (
-                        <View style={{flexDirection: "row", alignItems: "center"}}>
-                            <Ionicons name="book" size={32} color="#6366f1"/>
-                            <Text style={{marginLeft: 12, fontSize: 20}}>Book Collector</Text>
-                        </View>
-                    )
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
@@ -37,6 +32,13 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="library-outline" size={size} color={color}/>
                     ),
+                    headerShown: false,
+                    headerTitle: () => (
+                        <View style={{flexDirection: "row", alignItems: "center"}}>
+                            <Ionicons name="library" size={32} color="#6366f1"/>
+                            <Text style={{marginLeft: 12, fontSize: 20}}>Library</Text>
+                        </View>
+                    )
                 }}
             />
             <Tabs.Screen
@@ -46,6 +48,7 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="add-circle-outline" size={size} color={color}/>
                     ),
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
@@ -55,12 +58,17 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="sparkles-outline" size={size} color={color}/>
                     ),
-                    headerTitle: () => (
-                        <View style={{flexDirection: "row", alignItems: "center"}}>
-                            <Ionicons name="sparkles" size={32} color="#6366f1"/>
-                            <Text style={{marginLeft: 12, fontSize: 20}}>AI Recommendations</Text>
-                        </View>
-                    )
+                    headerShown: false
+                }}
+            />
+            <Tabs.Screen
+                name="wishlist"
+                options={{
+                    title: "Wishlist",
+                    tabBarIcon: ({color, size}) => (
+                        <Ionicons name="bookmark-outline" size={size} color={color}/>
+                    ),
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
@@ -70,6 +78,7 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="ellipsis-horizontal-circle-outline" size={size} color={color}/>
                     ),
+                    headerShown: false
                 }}
             />
         </Tabs>

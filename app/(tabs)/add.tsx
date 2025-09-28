@@ -84,7 +84,7 @@ export default function Add() {
     // Create new collection
     const createNewCollection = async () => {
         if (!newCollectionName.trim() || !typedAuth.currentUser) {
-            setErrorMessage("กรุณากรอกชื่อ Collection");
+            setErrorMessage("Please enter collection name");
             return;
         }
 
@@ -111,7 +111,7 @@ export default function Add() {
 
         } catch (error) {
             console.error("Error creating collection:", error);
-            setErrorMessage("ไม่สามารถสร้าง Collection ได้");
+            setErrorMessage("Unable to create collection");
         }
     };
 
@@ -143,7 +143,7 @@ export default function Add() {
             setErrorMessage("");
             setTimeout(nextStep, 100);
         } else {
-            setErrorMessage("ไม่พบข้อมูลจาก ISBN/Title นี้");
+            setErrorMessage("No data found for this ISBN/Title");
         }
     };
 
@@ -159,36 +159,72 @@ export default function Add() {
                 base64: true,
                 allowsEditing: true,
                 aspect: [150, 220],
-                quality: 0.3, // ลดคุณภาพลงจาก 0.7 เป็น 0.3
+                quality: 0.3,
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
             });
 
             if (!result.canceled && result.assets.length > 0) {
                 const base64Data = result.assets[0].base64;
                 if (base64Data) {
-                    // ตรวจสอบขนาดของ base64 (ประมาณ 3/4 ของข้อมูล base64)
                     const sizeInBytes = (base64Data.length * 3) / 4;
-                    const maxSize = 900000; // 900KB เพื่อให้มีพื้นที่สำหรับข้อมูลอ��่น
+                    const maxSize = 900000;
 
                     if (sizeInBytes > maxSize) {
-                        setErrorMessage("รูปภาพมีขนาดใหญ่เกินไป กรุณาเลือกรูปที่เล็กกว่า");
+                        setErrorMessage("Image size is too large. Please select a smaller image");
                         return;
                     }
 
                     setBook(prev => ({...prev, coverImage: base64Data}));
-                    setErrorMessage(""); // ล้าง error เมื่อเลือกรูปสำเร็จ
+                    setErrorMessage("");
                 }
             }
         } catch (error) {
             console.error("ImagePicker error:", error);
-            setErrorMessage("เกิดข้อผิดพลาดในการเลือกรูปภาพ");
+            setErrorMessage("Error occurred while selecting image");
+        }
+    };
+
+    // เพิ่มฟังก์ชันถ่ายรูปด้วยกล้อง
+    const takeCoverPhoto = async () => {
+        const {status} = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+            return setErrorMessage("Permission Denied: Please allow access to camera.");
+        }
+
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                base64: true,
+                allowsEditing: true,
+                aspect: [150, 220],
+                quality: 0.3,
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            });
+
+            if (!result.canceled && result.assets.length > 0) {
+                const base64Data = result.assets[0].base64;
+                if (base64Data) {
+                    const sizeInBytes = (base64Data.length * 3) / 4;
+                    const maxSize = 900000;
+
+                    if (sizeInBytes > maxSize) {
+                        setErrorMessage("Image size is too large. Please try taking another photo");
+                        return;
+                    }
+
+                    setBook(prev => ({...prev, coverImage: base64Data}));
+                    setErrorMessage("");
+                }
+            }
+        } catch (error) {
+            console.error("Camera error:", error);
+            setErrorMessage("Error occurred while taking photo");
         }
     };
 
     // ================= SAVE BOOK =================
     const saveBook = async () => {
         if (!book.title) {
-            setErrorMessage("กรุณากรอก Title ก่อนบันทึก");
+            setErrorMessage("Please enter Title before saving");
             setBook(prev => ({...prev, step: 2})); // กลับไป Step 2
             return;
         }
@@ -239,7 +275,7 @@ export default function Add() {
 
     // ================= DATE PICKER FUNCTIONS =================
     const formatDate = (date: Date) => {
-        return date.toLocaleDateString('th-TH', {
+        return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
@@ -274,438 +310,470 @@ export default function Add() {
     const progressPercent = Math.round((book.step / totalSteps) * 100);
 
     return (
-        <KeyboardAvoidingView
-            style={{flex: 1}}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-            <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 40}}
-                        keyboardShouldPersistTaps="handled" ref={scrollViewRef}>
-                {/* Progress Header */}
-                <View style={styles.progressContainer}>
-                    <View style={styles.progressHeader}>
-                        <Text style={styles.progressText}>Step {book.step} of {totalSteps}</Text>
-                        <Text style={styles.progressText}>{progressPercent}%</Text>
-                    </View>
-                    <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, {width: `${progressPercent}%`}]}/>
-                    </View>
+        <View style={{flex: 1, backgroundColor: "#f9fafb"}}>
+            {/* Header with consistent theme */}
+            <View style={styles.header}>
+                <View style={styles.headerTop}>
+                    <Text style={styles.headerTitle}>
+                        <Ionicons name="add-circle" size={24} color="#6366f1"/>
+                        {' '}Add New Book
+                    </Text>
+                    <Text style={styles.headerCount}>
+                        Step {book.step} of {totalSteps}
+                    </Text>
                 </View>
+            </View>
 
-                {/* Card */}
-                <View style={styles.card}>
-                    {/* Step 1 */}
-                    {book.step === 1 && (
-                        <View>
-                            <Text style={styles.label}>ISBN (Optional)</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="barcode-outline" size={20} color="#6b7280" style={styles.inputIcon}/>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="9780000000000"
-                                    value={book.isbn}
-                                    onChangeText={v => setBook(prev => ({...prev, isbn: v}))}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                            <Text style={styles.orText}>OR</Text>
-                            <Text style={styles.label}>Title (Optional)</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="book-outline" size={20} color="#6b7280" style={styles.inputIcon}/>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter book title"
-                                    value={book.title}
-                                    onChangeText={v => setBook(prev => ({...prev, title: v}))}
-                                />
-                            </View>
-
-                            {errorMessage ? (
-                                <View style={styles.errorBox}>
-                                    <Text style={styles.errorText}>{errorMessage}</Text>
-                                </View>
-                            ) : null}
-
-                            <Text style={styles.orText}>_____________________________________________</Text>
-
-                            <TouchableOpacity style={styles.primaryButton} onPress={() => fetchBook()}>
-                                <Text style={styles.buttonText}>Fetch Book</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity style={styles.secondaryButton} onPress={() => setScanVisible(true)}>
-                                <Text style={styles.secondaryButtonText}>Scan ISBN (Mobile)</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity style={styles.secondaryButton} onPress={nextStep}>
-                                <Text style={styles.secondaryButtonText}>Add Manually</Text>
-                            </TouchableOpacity>
-
-                            <ScanModal visible={scanVisible} onClose={() => setScanVisible(false)} onScan={handleScan}/>
+            <KeyboardAvoidingView
+                style={{flex: 1}}
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+            >
+                <ScrollView style={{paddingHorizontal: 16}} contentContainerStyle={{paddingBottom: 40}}
+                            keyboardShouldPersistTaps="handled" ref={scrollViewRef}>
+                    {/* Progress Bar */}
+                    <View style={styles.progressContainer}>
+                        <View style={styles.progressBar}>
+                            <View style={[styles.progressFill, {width: `${progressPercent}%`}]}/>
                         </View>
-                    )}
+                    </View>
 
-                    {/* Step 2 */}
-                    {book.step === 2 && (
-                        <View>
-                            <Text style={styles.label}>Cover Image</Text>
-                            <TouchableOpacity onPress={pickCoverImage} style={styles.imageButton}>
-                                {book.coverImage ? (
-                                    <Image source={{uri: `data:image/jpeg;base64,${book.coverImage}`}}
-                                           style={styles.buttonImage}/>
-                                ) : (
-                                    <Text style={{color: "#6b7280"}}>Pick Cover Image</Text>
-                                )}
-                            </TouchableOpacity>
-
-                            {/* Title input with error */}
-                            <View style={{marginBottom: 12}}>
-                                <Text style={styles.label}>Title *</Text>
-                                <View style={[
-                                    styles.inputContainer,
-                                    !book.title && errorMessage && styles.inputError
-                                ]}>
-                                    <Ionicons name="text-outline" size={20} color="#6b7280" style={styles.inputIcon}/>
+                    {/* Card */}
+                    <View style={styles.card}>
+                        {/* Step 1 */}
+                        {book.step === 1 && (
+                            <View>
+                                <Text style={styles.label}>ISBN (Optional)</Text>
+                                <View style={styles.inputContainer}>
+                                    <Ionicons name="barcode-outline" size={20} color="#6b7280"
+                                              style={styles.inputIcon}/>
                                     <TextInput
                                         style={styles.input}
-                                        value={book.title}
-                                        onChangeText={v => {
-                                            setBook(prev => ({...prev, title: v}));
-                                            if (v) setErrorMessage(""); // พิมพ์แล้วลบ error
-                                        }}
+                                        placeholder="9780000000000"
+                                        value={book.isbn}
+                                        onChangeText={v => setBook(prev => ({...prev, isbn: v}))}
+                                        keyboardType="numeric"
                                     />
                                 </View>
-                                {!book.title && errorMessage ? (
-                                    <Text style={styles.errorText}>กรุณากรอก Title</Text>
-                                ) : null}
-                            </View>
-
-                            {/* Inputs อื่น ๆ */}
-                            {renderInput("Authors", book.authors, v => setBook(prev => ({
-                                ...prev,
-                                authors: v
-                            })), "text", "people-outline")}
-                            {renderInput("Publisher", book.publisher, v => setBook(prev => ({
-                                ...prev,
-                                publisher: v
-                            })), "text", "business-outline")}
-                            {renderInput("Year", book.year, v => setBook(prev => ({
-                                ...prev,
-                                year: v
-                            })), "numeric", "calendar-outline")}
-                            {renderInput("ISBN", book.isbn, v => setBook(prev => ({
-                                ...prev,
-                                isbn: v
-                            })), "numeric", "barcode-outline")}
-                            {renderInput("Source", book.acquisitionSource, v => setBook(prev => ({
-                                ...prev,
-                                acquisitionSource: v
-                            })), "text", "cart-outline")}
-                            <View style={{marginBottom: 12}}>
-                                <Text style={styles.label}>Acquisition Date</Text>
-                                <TouchableOpacity onPress={() => setShowDatePicker(true)}
-                                                  style={styles.datePickerButton}>
-                                    <Text style={styles.datePickerText}>
-                                        {book.acquisitionDate ? book.acquisitionDate : "Select acquisition date"}
-                                    </Text>
-                                    <Ionicons name="calendar-outline" size={20} color="#6b7280"
-                                              style={styles.datePickerIcon}/>
-                                </TouchableOpacity>
-                                {showDatePicker && (
-                                    <DateTimePicker
-                                        value={selectedDate}
-                                        mode="date"
-                                        display="default"
-                                        onChange={handleDateChange}
-                                        style={{width: "100%"}}
+                                <Text style={styles.orText}>OR</Text>
+                                <Text style={styles.label}>Title (Optional)</Text>
+                                <View style={styles.inputContainer}>
+                                    <Ionicons name="book-outline" size={20} color="#6b7280" style={styles.inputIcon}/>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Enter book title"
+                                        value={book.title}
+                                        onChangeText={v => setBook(prev => ({...prev, title: v}))}
                                     />
-                                )}
-                            </View>
-                            {renderInput("Purchase Price", book.purchasePrice, v => setBook(prev => ({
-                                ...prev,
-                                purchasePrice: v
-                            })), "numeric", "cash-outline")}
+                                </View>
 
-                            {/* Collection Selection */}
-                            <View style={{marginBottom: 12}}>
-                                <Text style={styles.label}>Collection (Optional)</Text>
-
-                                {/* Existing collections */}
-                                {collections.length > 0 && (
-                                    <View style={styles.collectionList}>
-                                        {collections.map(collection => (
-                                            <TouchableOpacity
-                                                key={collection.id}
-                                                style={[
-                                                    styles.collectionItem,
-                                                    book.collectionId === collection.id && styles.collectionItemSelected
-                                                ]}
-                                                onPress={() => setBook(prev => ({
-                                                    ...prev,
-                                                    collectionId: collection.id
-                                                }))}
-                                            >
-                                                <Text style={[
-                                                    styles.collectionItemText,
-                                                    book.collectionId === collection.id && {color: '#fff'}
-                                                ]}>
-                                                    {collection.name}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                {errorMessage ? (
+                                    <View style={styles.errorBox}>
+                                        <Text style={styles.errorText}>{errorMessage}</Text>
                                     </View>
-                                )}
+                                ) : null}
 
-                                {/* New collection input */}
-                                {showNewCollectionInput ? (
-                                    <View style={styles.newCollectionContainer}>
-                                        <TextInput
-                                            style={styles.newCollectionInput}
-                                            placeholder="Enter new collection name"
-                                            value={newCollectionName}
-                                            onChangeText={setNewCollectionName}
-                                        />
-                                        <TouchableOpacity
-                                            style={[styles.primaryButton, {marginTop: 0, minWidth: 80}]}
-                                            onPress={createNewCollection}
-                                        >
-                                            <Text style={styles.buttonText}>Create</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                setShowNewCollectionInput(false);
-                                                setNewCollectionName("");
-                                            }}
-                                            style={{marginLeft: 8}}
-                                        >
-                                            <Text style={styles.cancelText}>Cancel</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : (
-                                    <TouchableOpacity
-                                        style={[styles.secondaryButton, {marginTop: 0}]}
-                                        onPress={() => setShowNewCollectionInput(true)}
-                                    >
-                                        <Text style={styles.secondaryButtonText}>+ Add New Collection</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
+                                <Text style={styles.orText}>_____________________________________________</Text>
 
-                            {/* Actions */}
-                            <View style={styles.row}>
-                                <TouchableOpacity style={styles.secondaryButton} onPress={prevStep}>
-                                    <Text style={styles.secondaryButtonText}>Back</Text>
+                                <TouchableOpacity style={styles.primaryButton} onPress={() => fetchBook()}>
+                                    <Text style={styles.buttonText}>Fetch Book</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.primaryButton}
-                                    onPress={() => {
-                                        if (!book.title) {
-                                            setErrorMessage("กรุณากรอก Title");
-                                            return;
-                                        }
-                                        setErrorMessage("");
-                                        nextStep();
-                                    }}
-                                >
-                                    <Text style={styles.buttonText}>Next</Text>
+
+                                <TouchableOpacity style={styles.secondaryButton} onPress={() => setScanVisible(true)}>
+                                    <Text style={styles.secondaryButtonText}>Scan ISBN (Mobile)</Text>
                                 </TouchableOpacity>
+
+                                <TouchableOpacity style={styles.secondaryButton} onPress={nextStep}>
+                                    <Text style={styles.secondaryButtonText}>Add Manually</Text>
+                                </TouchableOpacity>
+
+                                <ScanModal visible={scanVisible} onClose={() => setScanVisible(false)}
+                                           onScan={handleScan}/>
                             </View>
-                        </View>
-                    )}
+                        )}
 
-                    {/* Step 3 */}
-                    {book.step === 3 && (
-                        <View>
-                            <Text style={styles.reviewTitle}>Review Book Info</Text>
+                        {/* Step 2 */}
+                        {book.step === 2 && (
+                            <View>
+                                <Text style={styles.label}>Cover Image</Text>
 
-                            {/* Book Cover */}
-                            <View style={styles.reviewImageContainer}>
+                                {/* แสดงรูปที่เลือก/ถ่ายแล้ว */}
                                 {book.coverImage ? (
-                                    <Image source={{uri: `data:image/jpeg;base64,${book.coverImage}`}}
-                                           style={styles.reviewImage}/>
+                                    <View style={styles.imagePreviewContainer}>
+                                        <Image source={{uri: `data:image/jpeg;base64,${book.coverImage}`}}
+                                               style={styles.previewImage}/>
+                                        <TouchableOpacity
+                                            style={styles.removeImageButton}
+                                            onPress={() => setBook(prev => ({...prev, coverImage: null}))}
+                                        >
+                                            <Ionicons name="close-circle" size={24} color="#ef4444"/>
+                                        </TouchableOpacity>
+                                    </View>
                                 ) : (
-                                    <View style={styles.noImagePlaceholder}>
-                                        <Ionicons name="book-outline" size={40} color="#9ca3af"/>
-                                        <Text style={styles.noImageText}>No Cover Image</Text>
-                                    </View>
-                                )}
-                            </View>
+                                    <View style={styles.imageOptionsContainer}>
+                                        <TouchableOpacity onPress={takeCoverPhoto} style={styles.imageOptionButton}>
+                                            <Ionicons name="camera" size={24} color="#4F46E5"/>
+                                            <Text style={styles.imageOptionText}>Take Photo</Text>
+                                        </TouchableOpacity>
 
-                            {/* Book Details */}
-                            <View style={styles.reviewDetailsContainer}>
-                                {book.title && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="text-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Title</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.title}</Text>
-                                        </View>
+                                        <TouchableOpacity onPress={pickCoverImage} style={styles.imageOptionButton}>
+                                            <Ionicons name="image" size={24} color="#4F46E5"/>
+                                            <Text style={styles.imageOptionText}>From Gallery</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 )}
 
-                                {book.authors && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="people-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Authors</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.authors}</Text>
-                                        </View>
+                                {/* Title input with error */}
+                                <View style={{marginBottom: 12}}>
+                                    <Text style={styles.label}>Title *</Text>
+                                    <View style={[
+                                        styles.inputContainer,
+                                        !book.title && errorMessage && styles.inputError
+                                    ]}>
+                                        <Ionicons name="text-outline" size={20} color="#6b7280"
+                                                  style={styles.inputIcon}/>
+                                        <TextInput
+                                            style={styles.input}
+                                            value={book.title}
+                                            onChangeText={v => {
+                                                setBook(prev => ({...prev, title: v}));
+                                                if (v) setErrorMessage(""); // พิมพ์แล้วลบ error
+                                            }}
+                                        />
                                     </View>
-                                )}
+                                    {!book.title && errorMessage ? (
+                                        <Text style={styles.errorText}>Please enter Title</Text>
+                                    ) : null}
+                                </View>
 
-                                {book.publisher && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="business-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Publisher</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.publisher}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {book.year && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="calendar-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Year</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.year}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {book.isbn && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="barcode-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>ISBN</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.isbn}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {book.language && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="language-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Language</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.language}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {book.binding && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="library-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Binding</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.binding}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {book.acquisitionSource && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="cart-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Source</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.acquisitionSource}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {book.acquisitionDate && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="calendar-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Acquisition Date</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.acquisitionDate}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {book.purchasePrice && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="cash-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Purchase Price</Text>
-                                            <Text style={styles.reviewDetailValue}>{book.purchasePrice}</Text>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {/* Collection Info */}
-                                {book.collectionId && (
-                                    <View style={styles.reviewDetailItem}>
-                                        <View style={styles.reviewDetailIcon}>
-                                            <Ionicons name="folder-outline" size={18} color="#111111"/>
-                                        </View>
-                                        <View style={styles.reviewDetailContent}>
-                                            <Text style={styles.reviewDetailLabel}>Collection</Text>
-                                            <Text style={styles.reviewDetailValue}>
-                                                {collections.find(c => c.id === book.collectionId)?.name || 'Unknown Collection'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                )}
-                            </View>
-
-                            <View style={styles.row}>
-                                <TouchableOpacity style={styles.secondaryButton} onPress={prevStep}>
-                                    <Text style={styles.secondaryButtonText}>Back</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-                                    onPress={saveBook}
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <ActivityIndicator size="small" color="#fff" style={{marginRight: 8}}/>
-                                            <Text style={styles.buttonText}>Saving...</Text>
-                                        </>
-                                    ) : (
-                                        <>
-
-                                            <Text style={styles.buttonText}>Save Book</Text>
-                                        </>
+                                {/* Inputs อื่น ๆ */}
+                                {renderInput("Authors", book.authors, v => setBook(prev => ({
+                                    ...prev,
+                                    authors: v
+                                })), "text", "people-outline")}
+                                {renderInput("Publisher", book.publisher, v => setBook(prev => ({
+                                    ...prev,
+                                    publisher: v
+                                })), "text", "business-outline")}
+                                {renderInput("Year", book.year, v => setBook(prev => ({
+                                    ...prev,
+                                    year: v
+                                })), "numeric", "calendar-outline")}
+                                {renderInput("ISBN", book.isbn, v => setBook(prev => ({
+                                    ...prev,
+                                    isbn: v
+                                })), "numeric", "barcode-outline")}
+                                {renderInput("Source", book.acquisitionSource, v => setBook(prev => ({
+                                    ...prev,
+                                    acquisitionSource: v
+                                })), "text", "cart-outline")}
+                                <View style={{marginBottom: 12}}>
+                                    <Text style={styles.label}>Acquisition Date</Text>
+                                    <TouchableOpacity onPress={() => setShowDatePicker(true)}
+                                                      style={styles.datePickerButton}>
+                                        <Text style={styles.datePickerText}>
+                                            {book.acquisitionDate ? book.acquisitionDate : "Select acquisition date"}
+                                        </Text>
+                                        <Ionicons name="calendar-outline" size={20} color="#6b7280"
+                                                  style={styles.datePickerIcon}/>
+                                    </TouchableOpacity>
+                                    {showDatePicker && (
+                                        <DateTimePicker
+                                            value={selectedDate}
+                                            mode="date"
+                                            display="default"
+                                            onChange={handleDateChange}
+                                            style={{width: "100%"}}
+                                        />
                                     )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-                </View>
+                                </View>
+                                {renderInput("Purchase Price", book.purchasePrice, v => setBook(prev => ({
+                                    ...prev,
+                                    purchasePrice: v
+                                })), "numeric", "cash-outline")}
 
-                {/* Custom Success Alert */}
-                <CustomAlert
-                    visible={showSuccessAlert}
-                    title="บันทึกสำเร็จ! 🎉"
-                    message={`หนังสือ "${book.title}" ถูกเพิ่มเข้าคอลเลกชันแล้ว`}
-                    type="success"
-                    onClose={() => {
-                        setShowSuccessAlert(false);
-                        setBook({...defaultBook, step: 1});
-                    }}
-                />
-            </ScrollView>
-        </KeyboardAvoidingView>
+                                {/* Collection Selection */}
+                                <View style={{marginBottom: 12}}>
+                                    <Text style={styles.label}>Collection (Optional)</Text>
+
+                                    {/* Existing collections */}
+                                    {collections.length > 0 && (
+                                        <View style={styles.collectionList}>
+                                            {collections.map(collection => (
+                                                <TouchableOpacity
+                                                    key={collection.id}
+                                                    style={[
+                                                        styles.collectionItem,
+                                                        book.collectionId === collection.id && styles.collectionItemSelected
+                                                    ]}
+                                                    onPress={() => setBook(prev => ({
+                                                        ...prev,
+                                                        collectionId: collection.id
+                                                    }))}
+                                                >
+                                                    <Text style={[
+                                                        styles.collectionItemText,
+                                                        book.collectionId === collection.id && {color: '#fff'}
+                                                    ]}>
+                                                        {collection.name}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+
+                                    {/* New collection input */}
+                                    {showNewCollectionInput ? (
+                                        <View style={styles.newCollectionContainer}>
+                                            <TextInput
+                                                style={styles.newCollectionInput}
+                                                placeholder="Enter new collection name"
+                                                value={newCollectionName}
+                                                onChangeText={setNewCollectionName}
+                                            />
+                                            <TouchableOpacity
+                                                style={[styles.primaryButton, {marginTop: 0, minWidth: 80}]}
+                                                onPress={createNewCollection}
+                                            >
+                                                <Text style={styles.buttonText}>Create</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setShowNewCollectionInput(false);
+                                                    setNewCollectionName("");
+                                                }}
+                                                style={{marginLeft: 8}}
+                                            >
+                                                <Text style={styles.cancelText}>Cancel</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : (
+                                        <TouchableOpacity
+                                            style={[styles.secondaryButton, {marginTop: 0}]}
+                                            onPress={() => setShowNewCollectionInput(true)}
+                                        >
+                                            <Text style={styles.secondaryButtonText}>+ Add New Collection</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+
+                                {/* Actions */}
+                                <View style={styles.row}>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={prevStep}>
+                                        <Text style={styles.secondaryButtonText}>Back</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.primaryButton}
+                                        onPress={() => {
+                                            if (!book.title) {
+                                                setErrorMessage("Please enter Title");
+                                                return;
+                                            }
+                                            setErrorMessage("");
+                                            nextStep();
+                                        }}
+                                    >
+                                        <Text style={styles.buttonText}>Next</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Step 3 */}
+                        {book.step === 3 && (
+                            <View>
+                                <Text style={styles.reviewTitle}>Review Book Info</Text>
+
+                                {/* Book Cover */}
+                                <View style={styles.reviewImageContainer}>
+                                    {book.coverImage ? (
+                                        <Image source={{uri: `data:image/jpeg;base64,${book.coverImage}`}}
+                                               style={styles.reviewImage}/>
+                                    ) : (
+                                        <View style={styles.noImagePlaceholder}>
+                                            <Ionicons name="book-outline" size={40} color="#9ca3af"/>
+                                            <Text style={styles.noImageText}>No Cover Image</Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* Book Details */}
+                                <View style={styles.reviewDetailsContainer}>
+                                    {book.title && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="text-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Title</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.title}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.authors && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="people-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Authors</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.authors}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.publisher && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="business-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Publisher</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.publisher}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.year && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="calendar-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Year</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.year}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.isbn && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="barcode-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>ISBN</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.isbn}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.language && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="language-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Language</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.language}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.binding && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="library-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Binding</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.binding}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.acquisitionSource && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="cart-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Source</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.acquisitionSource}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.acquisitionDate && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="calendar-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Acquisition Date</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.acquisitionDate}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {book.purchasePrice && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="cash-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Purchase Price</Text>
+                                                <Text style={styles.reviewDetailValue}>{book.purchasePrice}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {/* Collection Info */}
+                                    {book.collectionId && (
+                                        <View style={styles.reviewDetailItem}>
+                                            <View style={styles.reviewDetailIcon}>
+                                                <Ionicons name="folder-outline" size={18} color="#111111"/>
+                                            </View>
+                                            <View style={styles.reviewDetailContent}>
+                                                <Text style={styles.reviewDetailLabel}>Collection</Text>
+                                                <Text style={styles.reviewDetailValue}>
+                                                    {collections.find(c => c.id === book.collectionId)?.name || 'Unknown Collection'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <View style={styles.row}>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={prevStep}>
+                                        <Text style={styles.secondaryButtonText}>Back</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+                                        onPress={saveBook}
+                                        disabled={isLoading}
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <ActivityIndicator size="small" color="#fff" style={{marginRight: 8}}/>
+                                                <Text style={styles.buttonText}>Saving...</Text>
+                                            </>
+                                        ) : (
+                                            <>
+
+                                                <Text style={styles.buttonText}>Save Book</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Custom Success Alert */}
+                    <CustomAlert
+                        visible={showSuccessAlert}
+                        title="Successfully Saved! 🎉"
+                        message={`Book "${book.title}" has been added to your collection`}
+                        type="success"
+                        onClose={() => {
+                            setShowSuccessAlert(false);
+                            setBook({...defaultBook, step: 1});
+                        }}
+                    />
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </View>
     );
 }
 
@@ -947,5 +1015,84 @@ const styles = StyleSheet.create({
     },
     datePickerIcon: {
         marginLeft: 8,
+    },
+    imagePreviewContainer: {
+        position: "relative",
+        width: "100%",
+        height: 220,
+        borderRadius: 8,
+        overflow: "hidden",
+        marginBottom: 16,
+    },
+    previewImage: {
+        width: "100%",
+        height: "100%",
+        resizeMode: "cover",
+    },
+    removeImageButton: {
+        position: "absolute",
+        top: 8,
+        right: 8,
+        backgroundColor: "#fff",
+        borderRadius: 50,
+        padding: 4,
+        shadowColor: "#000",
+        shadowOpacity: 0.2,
+        shadowOffset: {width: 0, height: 2},
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    imageOptionsContainer: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginTop: 8,
+        gap: 10,
+        marginBottom: 8,
+    },
+    imageOptionButton: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 12,
+        borderRadius: 8,
+        backgroundColor: "#E5E7EB",
+        shadowColor: "#000",
+        shadowOpacity: 0.05,
+        shadowOffset: {width: 0, height: 1},
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    imageOptionText: {
+        marginLeft: 8,
+        color: "#374151",
+        fontWeight: "500",
+    },
+    header: {
+        backgroundColor: '#fff',
+        paddingTop: 60,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb'
+    },
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 0
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#111827'
+    },
+    headerCount: {
+        fontSize: 16,
+        color: '#6b7280',
+        backgroundColor: '#f3f4f6',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 20
     },
 });

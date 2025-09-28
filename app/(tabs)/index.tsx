@@ -347,77 +347,87 @@ export default function App() {
 
     // Home screen
     return (
-        <ScrollView style={containerStyle}>
-            {/* Header */}
+        <View style={{flex: 1, backgroundColor: "#f9fafb"}}>
+            {/* Header with consistent theme */}
             <View style={styles.header}>
-                <Text style={headerTitleStyle}>Hello {getDisplayName()}</Text>
-            </View>
-
-            {/* Stats Cards */}
-            <View style={styles.statsContainer}>
-                <View style={cardStyle}>
-                    <Ionicons name="book-outline" size={28} color="#6C63FF"/>
-                    <Text style={[styles.cardValue, {color: isDarkMode ? '#fff' : '#000'}]}>
-                        {totalBooks}
+                <View style={styles.headerTop}>
+                    <Text style={styles.headerTitle}>
+                        <Ionicons name="home" size={24} color="#6366f1"/>
+                        {' '}Hello, {getDisplayName()}
                     </Text>
-                    <Text style={styles.cardLabel}>Total Books</Text>
-                </View>
-                <View style={cardStyle}>
-                    <FontAwesome5 name="dollar-sign" size={28} color="#6C63FF"/>
-                    <Text style={[styles.cardValue, {color: isDarkMode ? '#fff' : '#000'}]}>
-                        ฿{totalValue.toLocaleString()}
+                    <Text style={styles.headerCount}>
+                        {totalBooks} books
                     </Text>
-                    <Text style={styles.cardLabel}>Total Value</Text>
                 </View>
             </View>
 
-            {/* Quick Actions */}
-            <View style={styles.quickActions}>
-                <Text style={[styles.sectionTitle, {color: isDarkMode ? '#fff' : '#000'}]}>Quick Actions</Text>
-                <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={navigateToAddBook}
-                >
-                    <Text style={styles.addButtonText}>+ Add New Book</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Recent Additions */}
-            <RecentAdditions
-                recentBooks={recentBooks}
-                onAddBook={navigateToAddBook}
-            />
-
-            {/* This Month Activity */}
-            <View style={[styles.thisMonth, chartCardStyle]}>
-                <Text style={[styles.sectionTitle, {color: isDarkMode ? '#fff' : '#000', alignSelf: 'flex-start'}]}>
-                    This Month
-                </Text>
-                <View style={styles.thisMonthContent}>
-                    <Text style={styles.subText}>New additions</Text>
-                    <View style={styles.booksCountBadge}>
-                        <Text style={styles.booksCountText}>{thisMonthBooks.length} books</Text>
+            <ScrollView style={{paddingHorizontal: 16, paddingTop: 16}}>
+                {/* Stats Cards */}
+                <View style={styles.statsContainer}>
+                    <View style={cardStyle}>
+                        <Ionicons name="book-outline" size={28} color="#6C63FF"/>
+                        <Text style={[styles.cardValue, {color: isDarkMode ? '#fff' : '#000'}]}>
+                            {totalBooks}
+                        </Text>
+                        <Text style={styles.cardLabel}>Total Books</Text>
+                    </View>
+                    <View style={cardStyle}>
+                        <FontAwesome5 name="dollar-sign" size={28} color="#6C63FF"/>
+                        <Text style={[styles.cardValue, {color: isDarkMode ? '#fff' : '#000'}]}>
+                            ฿{totalValue.toLocaleString()}
+                        </Text>
+                        <Text style={styles.cardLabel}>Total Value</Text>
                     </View>
                 </View>
 
-                {thisMonthBooks.length === 0 ? (
+                {/* Quick Actions */}
+                <View style={styles.quickActions}>
+                    <Text style={[styles.sectionTitle, {color: isDarkMode ? '#fff' : '#000'}]}>Quick Actions</Text>
                     <TouchableOpacity
-                        style={styles.firstBookButton}
+                        style={styles.addButton}
                         onPress={navigateToAddBook}
                     >
-                        <Text style={styles.firstBookText}>Add your first book this month</Text>
+                        <Text style={styles.addButtonText}>+ Add New Book</Text>
                     </TouchableOpacity>
-                ) : (
-                    <View style={styles.thisMonthStats}>
-                        <Text style={styles.thisMonthValue}>
-                            Total value:
-                            ฿{thisMonthBooks.reduce((sum, book) => sum + book.purchasePrice, 0).toLocaleString()}
-                        </Text>
-                    </View>
-                )}
-            </View>
+                </View>
 
-        </ScrollView>
+                {/* Recent Additions */}
+                <RecentAdditions
+                    recentBooks={recentBooks}
+                    onAddBook={navigateToAddBook}
+                />
+
+                {/* This Month Activity */}
+                <View style={[styles.thisMonth, chartCardStyle]}>
+                    <Text style={[styles.sectionTitle, {color: isDarkMode ? '#fff' : '#000', alignSelf: 'flex-start'}]}>
+                        This Month
+                    </Text>
+                    <View style={styles.thisMonthContent}>
+                        <Text style={styles.subText}>New additions</Text>
+                        <View style={styles.booksCountBadge}>
+                            <Text style={styles.booksCountText}>{thisMonthBooks.length} books</Text>
+                        </View>
+                    </View>
+
+                    {thisMonthBooks.length === 0 ? (
+                        <TouchableOpacity
+                            style={styles.firstBookButton}
+                            onPress={navigateToAddBook}
+                        >
+                            <Text style={styles.firstBookText}>Add your first book this month</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.thisMonthStats}>
+                            <Text style={styles.thisMonthValue}>
+                                Total value:
+                                ฿{thisMonthBooks.reduce((sum, book) => sum + book.purchasePrice, 0).toLocaleString()}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+            </ScrollView>
+        </View>
     );
 }
 
@@ -429,11 +439,31 @@ const styles = StyleSheet.create({
 
     // --- Header Styles ---
     header: {
+        backgroundColor: '#fff',
+        paddingTop: 60,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb'
+    },
+    headerTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
-        paddingHorizontal: 5
+        marginBottom: 0
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#111827'
+    },
+    headerCount: {
+        fontSize: 16,
+        color: '#6b7280',
+        backgroundColor: '#f3f4f6',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 20
     },
     title: {fontSize: 22, fontWeight: 'bold', color: '#000'},
     darkTitle: {fontSize: 22, fontWeight: 'bold', color: '#fff'},

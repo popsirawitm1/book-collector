@@ -9,12 +9,12 @@ import {
     StyleSheet,
     Alert,
     ActivityIndicator,
-    SafeAreaView,
     Platform,
     StatusBar,
 } from "react-native";
 import {useRouter, useLocalSearchParams} from "expo-router";
 import {Ionicons} from "@expo/vector-icons";
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {doc, updateDoc, deleteDoc, getDocs, collection, query, where} from "firebase/firestore";
 import {db, auth} from "../configs/firebase";
 import CustomAlert from "../components/CustomAlert";
@@ -45,6 +45,7 @@ interface Collection {
 export default function BookDetailScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
+    const insets = useSafeAreaInsets();
 
     // Parse book data from params
     const book: BookData = JSON.parse(params.book as string);
@@ -188,12 +189,9 @@ export default function BookDetailScreen() {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingTop: insets.top}]}>
             {/* StatusBar configuration */}
             <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa"/>
-
-            {/* Safe area for status bar */}
-            <SafeAreaView style={styles.safeAreaTop}/>
 
             {/* Header */}
             <View style={styles.header}>
@@ -218,7 +216,11 @@ export default function BookDetailScreen() {
                 </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.content}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{paddingBottom: insets.bottom + 20}}
+            >
                 {/* Cover Image */}
                 <View style={styles.imageContainer}>
                     <Image
@@ -305,9 +307,6 @@ export default function BookDetailScreen() {
                 </View>
             </ScrollView>
 
-            {/* Safe area for home indicator */}
-            <SafeAreaView style={styles.safeAreaBottom}/>
-
             {/* Custom Alerts */}
             <CustomAlert
                 visible={showSuccessAlert}
@@ -333,14 +332,6 @@ export default function BookDetailScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
-    },
-    safeAreaTop: {
-        flex: 0,
-        backgroundColor: "#f8f9fa",
-    },
-    safeAreaBottom: {
-        flex: 0,
         backgroundColor: "#fff",
     },
     header: {

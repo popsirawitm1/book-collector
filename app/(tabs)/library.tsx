@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, useCallback} from "react";
 import {
     View,
     Text,
@@ -13,6 +13,7 @@ import {
     ActivityIndicator,
 } from "react-native";
 import {useNavigation, NavigationProp} from "@react-navigation/native";
+import {useFocusEffect} from "expo-router";
 import {Ionicons} from "@expo/vector-icons";
 import {auth, db} from "../../configs/firebase";
 import {collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, getDocs} from "firebase/firestore";
@@ -156,6 +157,67 @@ export default function BookPage() {
         setIsLoading(isLoadingBooks || isLoadingCollections);
     }, [isLoadingBooks, isLoadingCollections]);
 
+    // Refresh data every time the screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            if (!auth.currentUser) return;
+
+            console.log("Library screen focused - refreshing data");
+
+            // Set loading state
+            setIsLoading(true);
+            setIsLoadingBooks(true);
+            setIsLoadingCollections(true);
+
+            // Reload collections
+            loadCollections();
+
+            // The books data will be refreshed automatically through the existing onSnapshot listener
+            // But we can force a re-subscription to ensure fresh data
+            const q = query(
+                collection(db, "books"),
+                where("userId", "==", auth.currentUser.uid)
+            );
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const data: Book[] = snapshot.docs.map((doc) => {
+                    const bookData = doc.data();
+                    const collectionId = bookData.collectionId;
+
+                    return {
+                        id: doc.id,
+                        title: bookData.title || "",
+                        author: bookData.authors || "",
+                        publisher: bookData.publisher || "",
+                        year: bookData.year || "",
+                        image: bookData.coverImage
+                            ? `data:image/jpeg;base64,${bookData.coverImage}`
+                            : "https://i.ibb.co/3WpzD7y/book-open.jpg",
+                        price: Number(bookData.purchasePrice) || 0,
+                        condition: bookData.condition || "",
+                        edition: bookData.edition || "",
+                        type: bookData.binding || "",
+                        shelf: bookData.shelf || "",
+                        read: false,
+                        isbn: bookData.isbn,
+                        language: bookData.language,
+                        acquisitionSource: bookData.acquisitionSource,
+                        acquisitionDate: bookData.acquisitionDate,
+                        collectionId: collectionId,
+                        collectionName: "", // เราจะอัพเดทภายหลัง
+                    };
+                });
+                setBooks(data);
+                setIsLoadingBooks(false);
+                console.log(`Refreshed ${data.length} books`);
+            });
+
+            return () => {
+                unsubscribe();
+            };
+        }, [])
+    );
+
     // ฟิลเตอร์ logic
     const filteredBooks = books.filter((book) => {
         const matchSearch =
@@ -293,39 +355,54 @@ export default function BookPage() {
     );
 
     return (
-        <View style={{flex: 1, backgroundColor: "#fff"}}>
+        <View style={{flex: 1, backgroundColor: "#f9fafb"}}>
             {isLoading ? (
                 <LoadingScreen/>
             ) : (
                 <>
-                    {/* Header + Book count + Filter button */}
-                    <View style={styles.headerRow}>
-                        <Text style={styles.bookCount}>
-                            {filteredBooks.length} of {books.length} books
-                        </Text>
-                        <TouchableOpacity
-                            style={styles.filterButton}
-                            onPress={() => setFilterVisible(true)}
-                        >
-                            <Ionicons name="filter" size={20} color="#fff" style={{marginRight: 6}}/>
-                            <Text style={styles.filterButtonText}>Filter</Text>
-                        </TouchableOpacity>
-                    </View>
+                    {/* Header with Wishlist theme */}
+                    <View style={styles.header}>
+                        <View style={styles.headerTop}>
+                            <Text style={styles.headerTitle}>
+                                <Ionicons name="library" size={24} color="#6366f1"/>
+                                {' '}My Library
+                            </Text>
+                            <Text style={styles.headerCount}>
+                                {filteredBooks.length} of {books.length} books
+                            </Text>
+                        </View>
 
-                    {/* Search bar */}
-                    <View style={styles.searchBar}>
-                        <Ionicons name="search" size={18} color="#9ca3af"/>
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Search books, authors..."
-                            placeholderTextColor="#9ca3af"
-                            value={search}
-                            onChangeText={setSearch}
-                        />
+                        {/* Search Bar */}
+                        <View style={styles.searchContainer}>
+                            <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon}/>
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search books, authors..."
+                                placeholderTextColor="#9ca3af"
+                                value={search}
+                                onChangeText={setSearch}
+                            />
+                            {search.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearch('')} style={styles.clearButton}>
+                                    <Ionicons name="close-circle" size={20} color="#6b7280"/>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* Filter Button */}
+                        <View style={styles.filterRow}>
+                            <TouchableOpacity
+                                style={styles.filterButton}
+                                onPress={() => setFilterVisible(true)}
+                            >
+                                <Ionicons name="filter" size={18} color="#fff" style={{marginRight: 6}}/>
+                                <Text style={styles.filterButtonText}>Filter</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Filter Tabs */}
-                    <View style={{flexDirection: "row", marginHorizontal: 16, marginTop: 16}}>
+                    <View style={styles.tabsContainer}>
                         {FILTER_TABS.map((tab) => (
                             <TouchableOpacity
                                 key={tab.value}
@@ -434,18 +511,58 @@ export default function BookPage() {
 }
 
 const styles = StyleSheet.create({
-    headerRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
+    header: {
+        backgroundColor: '#fff',
+        paddingTop: 60,
         paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 8,
-        backgroundColor: "#f8f9fa",
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb'
     },
-    bookCount: {
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#111827'
+    },
+    headerCount: {
         fontSize: 16,
-        color: "#333",
+        color: '#6b7280',
+        backgroundColor: '#f3f4f6',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 20
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f9fafb',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        paddingHorizontal: 12
+    },
+    searchIcon: {
+        marginRight: 8
+    },
+    searchInput: {
+        flex: 1,
+        paddingVertical: 12,
+        fontSize: 16,
+        color: '#111827'
+    },
+    clearButton: {
+        padding: 4
+    },
+    filterRow: {
+        marginTop: 12,
+        flexDirection: "row",
+        justifyContent: "flex-end",
     },
     filterButton: {
         flexDirection: "row",
@@ -459,21 +576,10 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontWeight: "bold",
     },
-    searchBar: {
+    tabsContainer: {
         flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#f1f5f9",
-        borderRadius: 8,
         marginHorizontal: 16,
-        marginTop: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-    },
-    searchInput: {
-        flex: 1,
-        marginLeft: 8,
-        fontSize: 16,
-        color: "#333",
+        marginTop: 16,
     },
     tab: {
         flex: 1,
@@ -553,13 +659,6 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         marginTop: 16,
     },
-    detailImage: {
-        width: "100%",
-        height: 200,
-        borderRadius: 8,
-        resizeMode: "cover",
-        marginBottom: 12,
-    },
     bookTitle: {
         fontSize: 16,
         fontWeight: "bold",
@@ -608,17 +707,23 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: "#fff",
-        borderRadius: 8,
+        borderRadius: 12,
         elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: {width: 0, height: 1},
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
         flexDirection: "row",
         padding: 16,
         marginBottom: 16,
         alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#f3f4f6",
     },
     image: {
         width: 60,
         height: 90,
-        borderRadius: 4,
+        borderRadius: 8,
         resizeMode: "cover",
     },
     arrowContainer: {
@@ -632,6 +737,7 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         paddingHorizontal: 8,
         marginTop: 4,
+        alignSelf: 'flex-start',
     },
     collectionBadge: {
         fontSize: 12,
@@ -642,17 +748,16 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#fff",
+        backgroundColor: "#f9fafb",
+        gap: 16,
     },
     loadingText: {
-        marginTop: 12,
         fontSize: 16,
-        color: "#333",
+        color: "#6b7280",
     },
     loadingSubText: {
-        marginTop: 4,
         fontSize: 14,
-        color: "#777",
+        color: "#9ca3af",
         textAlign: "center",
         paddingHorizontal: 32,
     },
@@ -660,19 +765,20 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        paddingVertical: 32,
+        paddingVertical: 64,
+        paddingHorizontal: 32,
+        gap: 16,
     },
     emptyText: {
-        marginTop: 16,
-        fontSize: 18,
-        fontWeight: "bold",
-        color: "#333",
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#374151',
+        textAlign: 'center'
     },
     emptySubText: {
-        marginTop: 8,
-        fontSize: 14,
-        color: "#777",
-        textAlign: "center",
-        paddingHorizontal: 32,
+        fontSize: 16,
+        color: '#6b7280',
+        textAlign: 'center',
+        lineHeight: 24
     },
 });

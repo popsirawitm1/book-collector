@@ -338,114 +338,129 @@ function MainMoreScreen({setCurrentPage, colors, bookStats, showAlert}: MainMore
     };
 
     return (
-        <ScrollView style={[styles.container, {backgroundColor: colors.background}]}>
-            {/* Profile Card */}
-            <View style={[styles.card, {backgroundColor: colors.card}]}>
-                <View style={styles.profileRow}>
-                    <Ionicons name="person-circle-outline" size={60} color={colors.blue}/>
-                    <View style={{marginLeft: 12, flex: 1}}>
-                        <Text style={[styles.name, {color: colors.textPrimary}]}>
-                            {getUserDisplayName()}
-                        </Text>
-                        <Text style={[styles.email, {color: colors.textSecondary}]}>
-                            {getUserEmail()}
-                        </Text>
-                        <Text style={[styles.member, {color: colors.blue}]}>
-                            {getMembershipStatus()}
-                        </Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* Collection Overview */}
-            <View style={[styles.card, {backgroundColor: colors.card}]}>
-                <Text style={[styles.sectionTitle, {color: colors.textPrimary}]}>
-                    Collection Overview
-                </Text>
-                <View style={[styles.overviewRowLine, {borderBottomColor: colors.border}]}>
-                    <View style={styles.rowLeft}>
-                        <Ionicons name="book-outline" size={18} color={colors.blue}/>
-                        <Text style={[styles.overviewText, {color: colors.textSecondary}]}>
-                            Total Books
-                        </Text>
-                    </View>
-                    <Text style={[styles.overviewValue, {color: colors.textPrimary}]}>
-                        {bookStats ? bookStats.totalBooks : 0}
+        <View style={{flex: 1, backgroundColor: "#f9fafb"}}>
+            {/* Header with consistent theme */}
+            <View style={styles.header}>
+                <View style={styles.headerTop}>
+                    <Text style={styles.headerTitle}>
+                        <Ionicons name="person-circle" size={24} color="#6366f1"/>
+                        {' '}More
                     </Text>
-                </View>
-
-                <View style={[styles.overviewRowLine, {borderBottomColor: colors.border}]}>
-                    <View style={styles.rowLeft}>
-                        <Ionicons name="star-outline" size={18} color={colors.yellow}/>
-                        <Text style={[styles.overviewText, {color: colors.textSecondary}]}>
-                            First Editions
-                        </Text>
-                    </View>
-                    <Text style={[styles.overviewValue, {color: colors.textPrimary}]}>
-                        {bookStats ? bookStats.firstEditions : 0}
-                    </Text>
-                </View>
-
-                <View style={styles.overviewRow}>
-                    <View style={styles.rowLeft}>
-                        <Ionicons name="cash-outline" size={18} color={colors.green}/>
-                        <Text style={[styles.overviewText, {color: colors.textSecondary}]}>
-                            Estimated Value
-                        </Text>
-                    </View>
-                    <Text style={[styles.overviewValue, {color: colors.textPrimary}]}>
-                        ฿{bookStats ? bookStats.estimatedValue.toFixed(2) : 0}
+                    <Text style={styles.headerCount}>
+                        {bookStats ? bookStats.totalBooks : 0} books
                     </Text>
                 </View>
             </View>
 
-            {/* Menu Items */}
-            <View style={[styles.card, {backgroundColor: colors.card}]}>
-                <MenuItem
-                    title="Preferences"
-                    icon="settings-outline"
-                    onPress={() => setCurrentPage("Settings")}
-                    colors={colors}
-                />
-                <MenuItem
-                    title="Reports & Export"
-                    icon="document-text-outline"
-                    onPress={() => setCurrentPage("Reports")}
-                    colors={colors}
-                />
-                <MenuItem
-                    title="Help & Support"
-                    icon="help-circle-outline"
-                    onPress={() => setCurrentPage("Help")}
-                    colors={colors}
-                />
-                <TouchableOpacity
-                    style={[styles.menuItem, {borderBottomWidth: 0}]}
-                    onPress={handleLogout}
-                >
-                    <View style={styles.menuItemLeft}>
-                        <Ionicons name="log-out-outline" size={24} color="#dc2626"/>
-                        <Text style={[styles.menuItemText, {color: "#dc2626"}]}>
-                            Sign Out
+            <ScrollView style={[{paddingHorizontal: 16, backgroundColor: colors.background}]}>
+                {/* Profile Card */}
+                <View style={[styles.card, {backgroundColor: colors.card}]}>
+                    <View style={styles.profileRow}>
+                        <Ionicons name="person-circle-outline" size={60} color={colors.blue}/>
+                        <View style={{marginLeft: 12, flex: 1}}>
+                            <Text style={[styles.name, {color: colors.textPrimary}]}>
+                                {getUserDisplayName()}
+                            </Text>
+                            <Text style={[styles.email, {color: colors.textSecondary}]}>
+                                {getUserEmail()}
+                            </Text>
+                            <Text style={[styles.member, {color: colors.blue}]}>
+                                {getMembershipStatus()}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Collection Overview */}
+                <View style={[styles.card, {backgroundColor: colors.card}]}>
+                    <Text style={[styles.sectionTitle, {color: colors.textPrimary}]}>
+                        Collection Overview
+                    </Text>
+                    <View style={[styles.overviewRowLine, {borderBottomColor: colors.border}]}>
+                        <View style={styles.rowLeft}>
+                            <Ionicons name="book-outline" size={18} color={colors.blue}/>
+                            <Text style={[styles.overviewText, {color: colors.textSecondary}]}>
+                                Total Books
+                            </Text>
+                        </View>
+                        <Text style={[styles.overviewValue, {color: colors.textPrimary}]}>
+                            {bookStats ? bookStats.totalBooks : 0}
                         </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary}/>
-                </TouchableOpacity>
-            </View>
 
-            {/* App Info */}
-            <View style={[styles.card, {backgroundColor: colors.card}]}>
-                <Text style={[styles.sectionTitle, {color: colors.textPrimary}]}>
-                    About App
-                </Text>
-                <Text style={[styles.itemText, {color: colors.textSecondary}]}>
-                    Version: 1.0.0
-                </Text>
-                <Text style={[styles.itemText, {color: colors.textSecondary}]}>
-                    © 2024 Book Collector
-                </Text>
-            </View>
-        </ScrollView>
+                    <View style={[styles.overviewRowLine, {borderBottomColor: colors.border}]}>
+                        <View style={styles.rowLeft}>
+                            <Ionicons name="star-outline" size={18} color={colors.yellow}/>
+                            <Text style={[styles.overviewText, {color: colors.textSecondary}]}>
+                                First Editions
+                            </Text>
+                        </View>
+                        <Text style={[styles.overviewValue, {color: colors.textPrimary}]}>
+                            {bookStats ? bookStats.firstEditions : 0}
+                        </Text>
+                    </View>
+
+                    <View style={styles.overviewRow}>
+                        <View style={styles.rowLeft}>
+                            <Ionicons name="cash-outline" size={18} color={colors.green}/>
+                            <Text style={[styles.overviewText, {color: colors.textSecondary}]}>
+                                Estimated Value
+                            </Text>
+                        </View>
+                        <Text style={[styles.overviewValue, {color: colors.textPrimary}]}>
+                            ฿{bookStats ? bookStats.estimatedValue.toFixed(2) : 0}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Menu Items */}
+                <View style={[styles.card, {backgroundColor: colors.card}]}>
+                    <MenuItem
+                        title="Preferences"
+                        icon="settings-outline"
+                        onPress={() => setCurrentPage("Settings")}
+                        colors={colors}
+                    />
+                    <MenuItem
+                        title="Reports & Export"
+                        icon="document-text-outline"
+                        onPress={() => setCurrentPage("Reports")}
+                        colors={colors}
+                    />
+                    <MenuItem
+                        title="Help & Support"
+                        icon="help-circle-outline"
+                        onPress={() => setCurrentPage("Help")}
+                        colors={colors}
+                    />
+                    <TouchableOpacity
+                        style={[styles.menuItem, {borderBottomWidth: 0}]}
+                        onPress={handleLogout}
+                    >
+                        <View style={styles.menuItemLeft}>
+                            <Ionicons name="log-out-outline" size={24} color="#dc2626"/>
+                            <Text style={[styles.menuItemText, {color: "#dc2626"}]}>
+                                Sign Out
+                            </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary}/>
+                    </TouchableOpacity>
+                </View>
+
+                {/* App Info */}
+                <View style={[styles.card, {backgroundColor: colors.card}]}>
+                    <Text style={[styles.sectionTitle, {color: colors.textPrimary}]}>
+                        About App
+                    </Text>
+                    <Text style={[styles.itemText, {color: colors.textSecondary}]}>
+                        Version: 1.0.0
+                    </Text>
+                    <Text style={[styles.itemText, {color: colors.textSecondary}]}>
+                        © 2024 Book Collector
+                    </Text>
+                </View>
+            </ScrollView>
+        </View>
     );
 }
 
@@ -907,5 +922,32 @@ const styles = StyleSheet.create({
     exportButtonContent: {
         flexDirection: "row",
         alignItems: "center",
+    },
+    header: {
+        backgroundColor: '#fff',
+        paddingTop: 60,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb'
+    },
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 0
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#111827'
+    },
+    headerCount: {
+        fontSize: 16,
+        color: '#6b7280',
+        backgroundColor: '#f3f4f6',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 20
     },
 });
