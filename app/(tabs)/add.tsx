@@ -1,25 +1,25 @@
-import {Ionicons} from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from "expo-image-picker";
-import {useFocusEffect} from "expo-router";
-import type {Auth} from "firebase/auth";
-import {addDoc, collection, getDocs, query, where} from "firebase/firestore";
-import {useCallback, useState, useRef} from "react";
+import { useFocusEffect } from "expo-router";
+import type { Auth } from "firebase/auth";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { useCallback, useRef, useState } from "react";
 import {
+    ActivityIndicator,
     Image,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform
+    View
 } from "react-native";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import {auth, db} from "../../configs/firebase";
-import {BookData, fetchBookByQuery, ScanModal, ScanResult} from "../lib/scan";
 import CustomAlert from "../../components/CustomAlert";
+import { auth, db } from "../../configs/firebase";
+import { BookData, fetchBookByQuery, ScanModal, ScanResult } from "../lib/scan";
 
 // Ensure 'auth' is typed correctly
 const typedAuth = auth as Auth;
@@ -458,6 +458,18 @@ export default function Add() {
                                     ...prev,
                                     year: v
                                 })), "numeric", "calendar-outline")}
+                                
+                                {renderInput("Language", book.language, v => setBook(prev => ({
+                                    ...prev,
+                                    language: v
+                                })), "text", "globe-outline")}
+
+                                {renderInput("Binding", book.binding, v => setBook(prev => ({
+                                    ...prev,
+                                    binding: v
+                                })), "text", "book-outline")}
+
+
                                 {renderInput("ISBN", book.isbn, v => setBook(prev => ({
                                     ...prev,
                                     isbn: v
