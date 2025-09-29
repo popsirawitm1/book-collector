@@ -1,6 +1,8 @@
 // app/(tabs)/_layout.tsx
 import {Tabs} from "expo-router";
 import {Ionicons} from "@expo/vector-icons";
+import {View, Text} from 'react-native';
+
 
 export default function TabsLayout() {
     return (
@@ -20,6 +22,7 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="home-outline" size={size} color={color}/>
                     ),
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
@@ -29,33 +32,43 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="library-outline" size={size} color={color}/>
                     ),
+                    headerShown: false,
+                    headerTitle: () => (
+                        <View style={{flexDirection: "row", alignItems: "center"}}>
+                            <Ionicons name="library" size={32} color="#6366f1"/>
+                            <Text style={{marginLeft: 12, fontSize: 20}}>Library</Text>
+                        </View>
+                    )
                 }}
             />
             <Tabs.Screen
                 name="add"
                 options={{
-                    title: "Add",
+                    title: "Add Book",
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="add-circle-outline" size={size} color={color}/>
                     ),
-                }}
-            />
-            <Tabs.Screen
-                name="scan"
-                options={{
-                    title: "Scan",
-                    tabBarIcon: ({color, size}) => (
-                        <Ionicons name="scan-outline" size={size} color={color}/>
-                    ),
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
                 name="recs"
                 options={{
-                    title: "Recs",
+                    title: "Recommendations",
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="sparkles-outline" size={size} color={color}/>
                     ),
+                    headerShown: false
+                }}
+            />
+            <Tabs.Screen
+                name="wishlist"
+                options={{
+                    title: "Wishlist",
+                    tabBarIcon: ({color, size}) => (
+                        <Ionicons name="bookmark-outline" size={size} color={color}/>
+                    ),
+                    headerShown: false
                 }}
             />
             <Tabs.Screen
@@ -65,6 +78,7 @@ export default function TabsLayout() {
                     tabBarIcon: ({color, size}) => (
                         <Ionicons name="ellipsis-horizontal-circle-outline" size={size} color={color}/>
                     ),
+                    headerShown: false
                 }}
             />
         </Tabs>
